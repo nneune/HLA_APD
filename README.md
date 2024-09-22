@@ -19,7 +19,7 @@ The data generated during the current study cannot be shared publicly due to the
 
 ## Additional Functions for Dataset Preparation
 
-- **`10_packages_load.R`**: Loads R packages and functions for analysis.
+- **`packages_load.R`**: Loads R packages and functions for analysis.
 - **`02_binary_region_aa.R`**: Processes binary data (presence or absence) of amino acids in the sequences.
 - **`03_hlaSNPbin_AA.R`**: Prepares binary SNP data for HLA regions.
 - **`06_power_Fisher.R`**: Performs power analysis and Fisher's exact test.
