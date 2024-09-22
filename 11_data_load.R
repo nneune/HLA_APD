@@ -458,6 +458,7 @@ for(sub in subtypes){
 cat(sum(!is.na(Fisher_gag[,-1]),!is.na(Fisher_pol[,-1]),!is.na(Fisher_vif[,-1]),!is.na(Fisher_vpr[,-1]),!is.na(Fisher_tat[,-1]),!is.na(Fisher_rev[,-1]),!is.na(Fisher_vpu[,-1]),!is.na(Fisher_env[,-1]),!is.na(Fisher_nef[,-1])))
 
 # sign interactions ####
+subtypes="pooled" # or other
 # loop over all Fisher, then do glms for each row in the table and select those with sign. interaction -> that should be the new list of sign_hits!!
 for (sub in subtypes){
   df = data.frame(NA,NA,NA,NA)
@@ -467,15 +468,19 @@ for (sub in subtypes){
   excluded_var <- NULL
   # Fisher from all
   # hlaSNPbin from ART-Naive
-  setwd("")
+  setwd(dir = paste0("./ngs/hlaSNPbin/",sub,"/"))
+  
+  
   for (region in c("vif", "vpr", "tat","rev","vpu","nef", "gag", "env", "pol")) {
-    Fisher <- fread(paste0("./ngs/hlaSNPbin/B/Fisher_named_",region,".csv")) %>% tibble()
+    Fisher <- fread(paste0("./Fisher_named_",region,".csv")) %>% tibble()
     if (nrow(Fisher)<1) {next}
     sign_hits <- Fisher %>% pivot_longer(cols = !hla_allele, names_to = "var", values_to = "FDR") %>% drop_na(FDR) 
-    hlaSNPbin <- fread(paste0("./ngs/hlaSNPbin/",sub,"/hlaSNPbin_named_",region,".csv")) %>% tibble()
+    
+    hlaSNPbin <- fread(paste0("./hlaSNPbin_named_",region,".csv")) %>% tibble()
+    
     hlaSNPbin <- left_join(hlaSNPbin %>% distinct(), NGS_s %>%ungroup()%>% dplyr::select(base_uuid,subtype,ART_naive, starts_with("vPC"))) %>% tibble()
     hlaSNPbin$subtype <- relevel(as.factor(hlaSNPbin$subtype), ref=ifelse(sub=="B", sub, as.factor(hlaSNPbin$subtype) %>% table() %>% sort() %>% last() %>% names()))
-    translation <- fread(paste0("./ngs/hlaSNPbin/",sub,"/translation_named_", region,".csv")) %>% tibble()
+    translation <- fread(paste0("./translation_named_", region,".csv")) %>% tibble()
     
     # filter out high APD and remove sequences which are not ART-naive
     hlaSNPbin <- hlaSNPbin %>% filter(APD<0.05) %>% tibble() # filter APD<0.05 because of non-linear effect of APD on VL
@@ -527,6 +532,8 @@ for (sub in subtypes){
   }
   assign(paste0("count_",sub),count) # how many not found, should be == 0
   sign_hits <- df%>%  dplyr::arrange(POS) %>% drop_na() %>% dplyr::rename(hla = hla_allele)
+  
+  # sign_hits <- sign_hits %>% dplyr::mutate(pval.adj = p.adjust(pval, method="fdr")) %>% filter(pval.adj<0.05)
   # all significant interactions with APD are selected
   fwrite(sign_hits, paste0("./phenotypes/sign_int_",sub,"_hits_",ifelse(ART_naive == T, "naive", "all"),".csv"), row.names = F, na = "NA")
   assign(paste0("sign_hits_",sub), fread(paste0("./phenotypes/sign_int_",sub,"_hits_",ifelse(ART_naive == T, "naive", "all"),".csv")))

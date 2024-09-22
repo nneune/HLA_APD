@@ -295,7 +295,7 @@ longitudinal_analysis <- function(VAR,HLA,GENE,mosaic_time,color="black",pair=F,
                                                                       device = "tiff", bg="white", width=11,height = 5, units = "in", dpi = 300)}
     }
     
-    netMHCpan_rank <- data.frame(ID= netMHCpan$ID, EL_RANK=netMHCpan$EL_Rank, POS = netMHCpan$Pos)
+    netMHCpan_rank <- data.frame(ID= netMHCpan$ID, EL_RANK=netMHCpan$EL_Rank, POS = netMHCpan$Pos, peptide=netMHCpan$Peptide)
     if(pair ==T & longi ==F){return(b)}
   }
   # mosaic
@@ -541,6 +541,11 @@ sign_hits_longi_netMHCpan <- sign_hits_longi_netMHCpan %>% mutate(
 
 
 sign_hits_Hz <- full_join(sign_hits_Hz, table_var_change) %>% arrange(HLA,VAR,gene)
+
+
+# median time to mutation HLA vs no HLA
+sign_hits_Hz %>% 
+  filter(hla.hla==0) %$% hla.time.median %>% quantile(na.rm=T)
 
 model_APD_OR <- fread("./hlaSNPbin/model_APD_OR_B.csv") 
 

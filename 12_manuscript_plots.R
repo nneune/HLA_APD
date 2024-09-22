@@ -944,8 +944,15 @@ df <- df %>%dplyr::mutate(log10_pval = -log10(p.value)) %>% rowwise() %>%
 # Figure S5 ####
 #### correlation APD VL #### 
 FigS5 <- list()
-FigS5[[1]] <- (full_join(model_VL_B %>% filter(term=="Interaction") %>% dplyr::select(HLA, VAR, gene,estimate_VL=estimate,interaction_sign), 
-                         model_APD_OR %>% filter(term=="Interaction ") %>% dplyr::select(HLA, VAR, gene,estimate_APD=estimate),
+
+B_OR <- fread(paste0("./ngs/hlaSNPbin/model_APD_OR_B.csv")) %>% tibble()%>% filter(var!="242N") %>%
+  dplyr::mutate(gene = factor(firstup(as.character(gene)),levels=firstup(c("gag","pol","vif","vpr","tat","rev","vpu","env","nef"))))
+
+B_VL <- fread(paste0("./ngs/hlaSNPbin/model_VL_B_B.csv")) %>% tibble()%>% filter(var!="242N") %>%
+  dplyr::mutate(gene = factor(firstup(as.character(gene)),levels=firstup(c("gag","pol","vif","vpr","tat","rev","vpu","env","nef"))))
+
+FigS5[[1]] <- (full_join(B_VL %>% filter(term=="Interaction") %>% dplyr::select(HLA, VAR, gene,estimate_VL=estimate,interaction_sign), 
+                         B_OR %>% filter(term=="Interaction ") %>% dplyr::select(HLA, VAR, gene,estimate_APD=estimate),
                          by = join_by(HLA, VAR, gene)) %>% filter(VAR!="x242N") %>% 
                  ggplot(aes(y=estimate_VL,x=estimate_APD,color=interaction_sign))+
                  geom_hline(yintercept = 0, linetype="dashed")+
@@ -977,8 +984,8 @@ FigS5[[1]] <- (full_join(model_VL_B %>% filter(term=="Interaction") %>% dplyr::s
                        legend.key.size = unit(10,"mm"),
                        axis.ticks.length = unit(2,"mm"))) 
 
-full_join(model_VL_B %>% filter(term=="Interaction") %>% dplyr::select(HLA, VAR, gene,estimate_VL=estimate,interaction_sign), 
-          model_APD_OR %>% filter(term=="Interaction ") %>% dplyr::select(HLA, VAR, gene,estimate_APD=estimate),
+full_join(B_VL %>% filter(term=="Interaction") %>% dplyr::select(HLA, VAR, gene,estimate_VL=estimate,interaction_sign), 
+          B_OR %>% filter(term=="Interaction ") %>% dplyr::select(HLA, VAR, gene,estimate_APD=estimate),
           by = join_by(HLA, VAR, gene)) %>% filter(VAR!="x242N") %>% ungroup() %>% 
   with(cor.test(y=estimate_VL,x=estimate_APD,method = "spearman"))   
 
@@ -996,7 +1003,7 @@ FigS5[[2]] <-  (cor_matrix_APD_longi %>% filter(VAR!="x242N") %>% tibble()  %>%
                   geom_point(data=.%>%filter(HZ_sign==T), color="black")+
                   scale_color_manual("Hazard Ratio", values = c("grey70", "black"),labels = c("n.s.", "p<0.05"),aesthetics = c("color"))+
                   theme_classic()+
-                  labs(y="HIV variant occurance over time (Hazard Ratio)",
+                  labs(y="HIV variant Occurence over time (Hazard Ratio)",
                        x="Impact of HLA*APD interaction on HIV")+
                   scale_x_continuous(trans = "log", breaks=c(0.1,0.25,0.5,1,2,4),label=c(0.1,0.25,0.5,1,2,4), limits=c(0.2,5.1))+
                   scale_y_continuous(trans = "log", breaks=c(1e-1,0.25,0.5,1,2,4,1e1,25),label=c(1e-1,0.25,0.5,1,2,4,1e1,25))+
@@ -1070,10 +1077,6 @@ tibble(cor_matrix_APD_netMHCpan) %>% filter(VAR!="x242N") %>%
   # dplyr::slice(1)  %>%
   filter(!any(escape_neg)) %>%
   filter(!any(escape_pos))
-# with(table(escape_neg,escape_pos))
-# table(escape)
-
-# cor.test(Rank_ratio,estimate,method = "spearman")
 
 ## change in binding category
 tibble(cor_matrix_APD_netMHCpan) %>% filter(VAR!="x242N") %>% 
@@ -1093,10 +1096,7 @@ tibble(cor_matrix_APD_netMHCpan) %>% filter(VAR!="x242N") %>%
   filter(binding_diff=="Strong → strong Binder"|binding_diff=="Weak → weak Binder") %>% count() %$% paste(nrow(.),"pairs with epitopes that don't change category upon mutation")
 
 #### correlation B vs non-B #######
-B_OR <- fread(paste0("./ngs/hlaSNPbin/model_APD_OR_",ifelse(T,"","pv_"),"B",".csv")) %>% tibble()%>% filter(var!="242N") %>%
-  dplyr::mutate(gene = factor(firstup(as.character(gene)),levels=firstup(c("gag","pol","vif","vpr","tat","rev","vpu","env","nef"))))
-
-nonB_OR <- fread(paste0("./ngs/hlaSNPbin/model_APD_OR_",ifelse(T,"","pv_"),"nonB",".csv")) %>% tibble()%>% filter(var!="242N") %>%
+nonB_OR <- fread(paste0("./ngs/hlaSNPbin/model_APD_OR_nonB",".csv")) %>% tibble()%>% filter(var!="242N") %>%
   dplyr::mutate(gene = factor(firstup(as.character(gene)),levels=firstup(c("gag","pol","vif","vpr","tat","rev","vpu","env","nef"))))
 
 FigS5[[5]] <- (full_join(B_OR,nonB_OR, by=c("HLA","VAR","gene","term","var_names","POS","hla","var"),suffix = c(".B",".nonB")) %>%group_by(HLA,VAR,gene) %>% 
@@ -1131,6 +1131,45 @@ FigS5[[5]] <- (full_join(B_OR,nonB_OR, by=c("HLA","VAR","gene","term","var_names
                  
                  geom_text_repel(size=2.5,hjust=1.1,vjust=0.5,
                                  aes(label= ifelse(interaction_sign.nonB,paste0(gene,var,"~",hla),NA)))  # add REF
+) 
+
+pooled_OR <- fread(paste0("./ngs/hlaSNPbin/model_APD_OR_pooled",".csv")) %>% tibble()%>% filter(var!="242N") %>%
+  dplyr::mutate(gene = factor(firstup(as.character(gene)),levels=firstup(c("gag","pol","vif","vpr","tat","rev","vpu","env","nef"))))
+
+# pooled #
+FigS5[[6]] <- (full_join(B_OR,pooled_OR, by=c("HLA","VAR","gene","term","var_names","POS","hla","var"),suffix = c(".B",".pooled")) %>%group_by(HLA,VAR,gene) %>% 
+                 dplyr::select(-contains("AIC"),-contains("X2.5"),-contains("nobs"),-contains("X97.5"),-contains("ci")) %>% 
+                 drop_na() %>%
+                 filter(term == "Interaction ") %>% arrange(estimate.pooled) %>% 
+                 ggplot(., aes(x=estimate.B, y=estimate.pooled,color=interaction_sign.pooled))+
+                 geom_hline(yintercept = 1, linetype="dashed")+
+                 geom_vline(xintercept = 1, linetype="dashed")+
+                 geom_point()+
+                 geom_point(data = . %>% filter(interaction_sign.pooled))+
+                 
+                 scale_x_continuous(trans = "log", breaks=c(0.1,0.25,0.5,1,2,4),label=c(0.1,0.25,0.5,1,2,4), limits=c(0.2,5.1))+
+                 scale_y_continuous(trans = "log", breaks=c(1e-1,0.2,0.5,1,2,5,1e1),labels = c(1e-1,0.2,0.5,1,2,5,1e1), limits = c(1e-1,1e1))+
+                 stat_cor(vjust=0, color="black",method="spearman",cor.coef.name = "rho",r.digits = 2,p.accuracy =0.001)+
+                 stat_smooth(method="lm", color="black", alpha=0.08, size=0.5,fullrange = T)+
+                 guides(color= guide_legend(override.aes = aes(label = "", linetype = 0),
+                                            reverse = T, size=3,
+                                            label.theme = element_text(size = 11),
+                                            title.theme = element_text(face="bold", size = 13)))+
+                 
+                 scale_color_manual(aesthetics = c("fill", "color"), "Interaction (non-B & B)", labels=c("p<0.05","n.s."),values=c("black","grey70"))+
+                 theme_classic()+
+                 xlab("Impact of HLA*APD interaction on HIV\nSubtype B")+
+                 ylab("Subtype non-B and B pooled\nImpact of HLA*APD interaction on HIV")+
+                 theme(axis.title = element_text(face="bold", size = 14),
+                       axis.text = element_text(size=12),
+                       legend.title = element_text(face="bold", size = 13),
+                       legend.text = element_text(size = 11),
+                       legend.position = c(0.85,0.08),
+                       legend.text.align = 0,
+                       legend.key.height = unit(4,"mm"),
+                       legend.key.size = unit(10,"mm"),
+                       axis.ticks.length = unit(2,"mm"))
+                 
 ) 
 
 #### correlation proviral excluded vs included #######
@@ -1175,7 +1214,7 @@ FigS5[[4]] <- (full_join(B_OR,B_npv_OR, by=c("HLA","VAR","gene","term","var_name
 ) 
 
 plot_grid(plotlist = FigS5, labels = "AUTO",label_size = 16, ncol=2, align="hv") %>%
-  ggsave(filename = paste0("./FigureS5.tiff"), 
+  ggsave(filename = paste0("~/switchdrive/qid/masterThesisNNJ/manuscript figures/FigureS5.tiff"), 
          width = 15, height = 18, bg="white",dpi = 300) ## 26 is the optimal width for word
 
 #### ORs from weaker vs stronger binding upon mutation ####
